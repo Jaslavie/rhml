@@ -1,4 +1,4 @@
-# exploring reciprocal human-machine learning 
+# exploring reciprocal human-machine learning with a decision engine
 based on this [research paper](https://pubsonline.informs.org/doi/10.1287/mnsc.2022.03518)
 
 ### notes
@@ -8,17 +8,17 @@ based on this [research paper](https://pubsonline.informs.org/doi/10.1287/mnsc.2
 
 Human utility:
 $$
-U_{\text{human}} = P_{\text{correct,human}} - C_{\text{human}}
+U_human = P_correct,human - C_human
 $$
 
 Machine utility:
 $$
-U_{\text{machine}} = P_{\text{correct,machine}} - C_{\text{machine}}
+U_machine = P_correct,machine - C_machine
 $$
 
 Allocation rule:
 $$
-\text{Assign to:} \quad \arg\max \left( U_{\text{human}}, U_{\text{machine}} \right)
+argmax(U_human, U_machine)
 $$
 
 - the policy outcomes are determined primarily by the machine and human performance. Based on confidence levels

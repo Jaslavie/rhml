@@ -134,10 +134,72 @@ export class LogicBasedAllocator {
     context: DecisionContext,
     reasoning: string[]
   ) {
-    // TODO: replace this with logic
-    const selectedActor: DecisionActor = "human";
-    const confidence: number = 0;
-    return { selectedActor, confidence };
+    // default to human and 0 confidence
+    let selectedActor: DecisionActor = "human";
+    let confidence: number = 0;
+
+    //* ===== rules to assign actor =====
+    // CORE ALLOCATION RULE: argmax(U_human, U_machine)
+    if (U_human > U_machine) {
+      selectedActor = "human";
+      confidence = P_correct_human;
+      reasoning.push(
+        "CREW OPTIMAL: Human performance exceeds AI capability for this task"
+      );
+    }
+    if (U_machine > U_human) {
+      selectedActor = "machine";
+      confidence = P_correct_machine;
+      reasoning.push(
+        "AUTO OPTIMAL: AI performance exceeds crew capability for this task"
+      );
+    }
+
+    // if machine is confident and uncertainty is low
+    if (
+      machineConfidence.confidenceScore > 0.8 &&
+      machineConfidence.uncertaintyScore < 0.2
+    ) {
+      selectedActor = "machine";
+      confidence = P_correct_machine;
+      reasoning.push(
+        "AUTO CLEARED: High confidence, low risk - AI execution authorized"
+      );
+    }
+    // When machine is uncertain, humans excel at handling edge cases
+    if (machineConfidence.uncertaintyScore > 0.3) {
+      selectedActor = "human";
+      confidence = P_correct_human;
+      reasoning.push(
+        "CREW REQUIRED: AI uncertainty detected - human judgment needed"
+      );
+    }
+    // if confidence is gray zone, use hybrid decision model
+    // TODO: needs to be expanded upon
+    if (
+      machineConfidence.confidenceScore >= 0.5 &&
+      machineConfidence.confidenceScore <= 0.8
+    ) {
+      selectedActor = "human";
+      confidence = P_correct_human;
+      reasoning.push(
+        "CREW STANDBY: Moderate confidence - human oversight recommended"
+      );
+    }
+    // if the task is an emergency and the machine is uncertain
+    // always defer to human
+    if (
+      context.taskType === "emergency" &&
+      machineConfidence.uncertaintyScore > 0.5
+    ) {
+      selectedActor = "human";
+      confidence = P_correct_human;
+      reasoning.push(
+        "EMERGENCY OVERRIDE: Critical situation - crew takes control immediately"
+      );
+    }
+
+    return { selectedActor, confidence, reasoning };
   }
 
   //====== accuracy calculations =====
@@ -157,9 +219,29 @@ export class LogicBasedAllocator {
 
   //====== cost calculations =====
   private calculateMachineCost(context: DecisionContext): number {
-    return 0;
+    // Machine costs are generally very low (computational efficiency)
+    let cost = 0.01; // Base computational cost
+
+    // EMERGENCY COST INCREASE: Higher stakes increase effective cost
+    // In emergencies, potential error costs are amplified
+    if (context.taskType === "emergency") { cost += 0.05; }
+
+    return cost;
   }
+
   private calculateHumanCost(context: DecisionContext): number {
-    return 0;
+    // Human costs include time, cognitive effort, and opportunity cost
+    let cost = 0.1; // Base human effort cost
+
+    // TASK COMPLEXITY ADJUSTMENTS
+    // Different tasks require different cognitive loads
+    if (context.taskType === "routine") {
+      cost = 0.05; // Lower cost for routine tasks (less cognitive load)
+    } else if (context.taskType === "planning") {
+      cost = 0.15; // Higher cost for complex planning (more cognitive effort)
+    }
+    // emergency tasks keeps the base cost
+
+    return cost;
   }
 }
