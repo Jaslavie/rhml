@@ -14,10 +14,11 @@ export interface MachineConfidence {
   modelVersion: string;
 }
 
+//* quantifies the cost of negative outcomes
 export interface CostConfiguration {
-  falsePositiveCost: number;
-  falseNegativeCost: number;
-  timeDelayCost: number;
+  falsePositiveCost: number; // cost of a false positive decision
+  falseNegativeCost: number; // cost of a false negative decision
+  timeDelayCost: number; // cost of a delayed decision
 }
 
 export type DecisionActor = "machine" | "human";
