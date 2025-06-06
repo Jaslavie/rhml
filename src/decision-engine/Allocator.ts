@@ -207,14 +207,47 @@ export class LogicBasedAllocator {
     context: DecisionContext,
     machineConfidence: MachineConfidence
   ): number {
-    return 0;
+    // calculate accuracy 
+    // penalize uncertainty (30% penalty)
+    let P_correct = machineConfidence.confidenceScore;
+    const uncertaintyPenalty = machineConfidence.uncertaintyScore * 0.3;
+    P_correct = Math.max(0.1, P_correct - uncertaintyPenalty);
+
+    // learn from historical performance
+    // accuracy: 70% current knowledge (short term memory) and 30% historical (long term memory) knowledge
+    const history = this.machinePerformanceHistory.get(context.taskType) || [];
+    if (history.length > 0) {
+      const historicalAccuracy =
+        history.reduce((a, b) => a + b) / history.length;
+      P_correct = 0.7 * P_correct + 0.3 * historicalAccuracy;
+    }
+
+    // return as a percentage (0-1)
+    return Math.min(0.99, Math.max(0.01, P_correct));
   }
   private estimateHumanAccuracy(
     context: DecisionContext,
     humanExpertise: number,
     machineConfidence: MachineConfidence
   ): number {
-    return 0;
+    let P_correct = humanExpertise;
+
+    // ==== assumptions =====
+    // humans excel when machine is uncertain (15% bonus)
+    if (machineConfidence.uncertaintyScore > 0.6) { P_correct += 0.15;}
+    // humans better at complex tasks (10% bonus)
+    if (context.taskType === "planning" || context.taskType === "emergency") { P_correct += 0.1; }
+
+    // learn from historical human performance (60% current, 40% historical)
+    const history = this.humanPerformanceHistory.get(context.taskType) || [];
+    if (history.length > 0) {
+      const historicalAccuracy =
+        history.reduce((a, b) => a + b) / history.length;
+      P_correct = 0.6 * P_correct + 0.4 * historicalAccuracy;
+    }
+
+    // return as a percentage (0.3-0.95)
+    return Math.min(0.95, Math.max(0.3, P_correct));
   }
 
   //====== cost calculations =====
@@ -224,7 +257,7 @@ export class LogicBasedAllocator {
 
     // EMERGENCY COST INCREASE: Higher stakes increase effective cost
     // In emergencies, potential error costs are amplified
-    if (context.taskType === "emergency") { cost += 0.05; }
+    if (context.taskType === "emergency") { cost += 0.05;}
 
     return cost;
   }
@@ -240,7 +273,6 @@ export class LogicBasedAllocator {
     } else if (context.taskType === "planning") {
       cost = 0.15; // Higher cost for complex planning (more cognitive effort)
     }
-    // emergency tasks keeps the base cost
 
     return cost;
   }
